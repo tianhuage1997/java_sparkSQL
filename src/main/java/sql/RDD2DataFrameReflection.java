@@ -6,8 +6,11 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.sql.DataFrame;
+
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
+
+import java.util.List;
 
 public class RDD2DataFrameReflection {
 
@@ -19,7 +22,7 @@ public class RDD2DataFrameReflection {
         SQLContext  sqlContext = new SQLContext(sc);
 
         JavaRDD<String>  lines=sc.textFile("E:\\spark_resource\\students.txt");
-        //将txt的文本，转换成student格式的rdd类型
+        //将txt的文本，转换成student格式的rdd类型（文本转换是默认string类型。直接数组去拿）
         JavaRDD<Student>   students  =lines.map(new Function<String, Student>() {
 
             private  static  final long serialVersionUID = 1L;
@@ -48,17 +51,34 @@ public class RDD2DataFrameReflection {
        studentDF.registerTempTable("students");
 
         //针对student临时表执行SQL语句，查询年纪小于18岁的学生，就是teenageer
-        DataFrame  teenagerDF =sqlContext.sql("SELECT  * FROM students WHERE AGE <= 18");
+        DataFrame  teenagerDF =sqlContext.sql("SELECT  * FROM students WHERE age <= 18");
 
         // 将查询出来的DataFrame，再次转换为RDD
+        JavaRDD<Row> teenagerRDD = teenagerDF.javaRDD();
 
+        // 将RDD中的数据，进行映射，映射为Student（这里注意转换，他转换的是基于student对象）
+        JavaRDD<Student>  teenagerStudentRDD = teenagerRDD.map(new Function<Row, Student>() {
 
-        // 将RDD中的数据，进行映射，映射为Student
+            private static final long serialVersionUID = 1L;
 
+            @Override
+            public Student call(Row line) throws Exception {
+                // row中的数据的顺序，可能是跟我们期望的是不一样的！
+                Student student  = new Student();
+                student.setId(line.getInt(1));
+                student.setName(line.getString(2));
+                student.setAge(line.getInt(0));
 
-        // row中的数据的顺序，可能是跟我们期望的是不一样的！
+                return student;
+            }
+        });
 
+        // 将数据collect回来，打印出来
+        List<Student>   studentList = teenagerStudentRDD.collect();
 
+        for (Student stu:studentList){
+            System.out.println("结果:"+stu.toString());
+        }
 
 
     }

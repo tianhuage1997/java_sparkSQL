@@ -5,7 +5,9 @@ import java.io.Serializable;
 public class Student   implements Serializable {
 
       private  int id;
-      private  String  name;
+
+
+    private  String  name;
       private  int     age;
 
 
@@ -32,4 +34,14 @@ public class Student   implements Serializable {
     public void setAge(int age) {
         this.age = age;
     }
+
+    @Override
+    public String toString() {
+        return "Student{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", age=" + age +
+                '}';
+    }
+
 }
