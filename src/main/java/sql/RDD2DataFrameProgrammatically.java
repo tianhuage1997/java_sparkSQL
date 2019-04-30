@@ -4,9 +4,16 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 以编程方式动态指定元数据，将RDD转换为DataFrame
@@ -34,7 +41,7 @@ public class RDD2DataFrameProgrammatically {
         // 但是，肯定是之前有些步骤，将age定义为了String
         // 所以就往前找，就找到了这里
         // 往Row中塞数据的时候，要注意，什么格式的数据，就用什么格式转换一下，再塞进去
-        JavaRDD<Row> students = lines.map(new Function<String, Row>() {
+        JavaRDD<Row> studentRDD = lines.map(new Function<String, Row>() {
 
             private static final long serialVersionUID = 1L;
 
@@ -54,6 +61,28 @@ public class RDD2DataFrameProgrammatically {
         // 比如说，id、name等，field的名称和类型，可能都是在程序运行过程中，动态从mysql db里
         // 或者是配置文件中，加载出来的，是不固定的
         // 所以特别适合用这种编程的方式，来构造元数据
+        List<StructField>  structFields = new ArrayList<StructField>();
+
+        structFields.add(DataTypes.createStructField("id",DataTypes.IntegerType,true));
+        structFields.add(DataTypes.createStructField("name",DataTypes.StringType,true));
+        structFields.add(DataTypes.createStructField("age",DataTypes.IntegerType,true));
+
+        StructType structType = DataTypes.createStructType(structFields);
+
+        // 第三步，使用动态构造的元数据，将RDD转换为DataFrame
+        DataFrame  studentDF = sqlContext.createDataFrame(studentRDD,structType);
+
+        //后面，就可以使用DataFrame了,先把他注册成一个临时表
+        studentDF.registerTempTable("student");
+
+        DataFrame teenagerDF = sqlContext.sql("select * from student where age <= 18");
+
+        List<Row>  rowList =  teenagerDF.javaRDD().collect();
+
+        for(Row row :rowList){
+            System.out.println(row);
+        }
+
 
 
     }
